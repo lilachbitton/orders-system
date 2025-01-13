@@ -18,7 +18,6 @@ const OrderForm = () => {
   const [error, setError] = useState(null);
   const [showCustomers, setShowCustomers] = useState(false);
 
-  // Load products and customers
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -98,26 +97,62 @@ const OrderForm = () => {
 
   const submitOrder = async (orderDetails) => {
     try {
-      // שליחה לוובהוק
-      const response = await fetch('https://hook.eu2.make.com/l1mwcnsmm5jrstfdd548wxf0jcum2mwj', {
+      // מכינים את הנתונים לפורמט של מערכת החשבוניות
+      const invoiceData = {
+        Title: "",
+        Notes: `הזמנה מתאריך ${orderDetails.תאריך_הזמנה}`,
+        NotesBottom: "",
+        CurrencyID: 2, // ILS
+        LangID: 359, // Hebrew
+        SendSMS: false,
+        SendEmail: false,
+        DocumentType: 2, // הזמנה
+        vatPercentage: 17,
+        DateCreated: new Date().toISOString().split('T')[0],
+        MaxDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+        statusID: 1,
+
+        Customer: {
+          Name: orderDetails.לקוח,
+          NameInvoice: orderDetails.לקוח
+        },
+
+        items: orderDetails.מוצרים.map(item => ({
+          Quantity: item.כמות,
+          Price: item.מחיר_ליחידה,
+          Name: item.שם_מוצר,
+          Sku: item.מקט.toString(),
+          vatType: 4
+        }))
+      };
+
+      // שולחים למערכת החשבוניות
+      const response = await fetch('https://api.yeshinvoice.co.il/api/v1.1/createDocument', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': JSON.stringify({
+            "secret": "094409be-bb9c-4a51-b3b5-2d15dc2d2154",
+            "userkey": "CWKaRN8167zMA5niguEf"
+          })
         },
-        body: JSON.stringify(orderDetails)
+        body: JSON.stringify(invoiceData)
       });
 
       if (!response.ok) {
-        throw new Error('שגיאה בשליחת ההזמנה');
+        throw new Error('שגיאה ביצירת החשבונית');
       }
 
-      alert('ההזמנה נשלחה בהצלחה!');
+      const responseData = await response.json();
+      console.log('תשובה מהשרת:', responseData);
+
+      alert('ההזמנה נוצרה בהצלחה!');
       setOrders(products.map(p => ({ productId: p['מק"ט '], quantity: 0 })));
       setSelectedCustomer('');
       setCustomerSearch('');
       
     } catch (error) {
-      console.error('שגיאה בשליחת ההזמנה:', error);
+      console.error('שגיאה:', error);
       alert('אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
     }
   };
@@ -302,7 +337,7 @@ const OrderForm = () => {
               סה"כ יחידות: {totalUnits}
             </p>
             {orders.some(o => o.quantity > 0) && (
-              <p className="text-xl font-bold">
+   <p className="text-xl font-bold">
                 סה"כ לתשלום: ₪
                 {orders.reduce((sum, order) => {
                   const product = products.find(p => p['מק"ט '] === order.productId);
