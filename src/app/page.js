@@ -285,41 +285,37 @@ const OrderForm = () => {
                         <Label className="text-sm">
                           כמות (כפולות של {product['כפולות להזמנה']})
                         </Label>
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => adjustQuantity(product['מק"ט '], 1)}
-                            className="h-8 w-8"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                          
-                          <div className="w-20">
-                            <Input
-                              type="number"
-                              value={order.quantity}
-                              onChange={(e) => handleQuantityChange(product['מק"ט '], Number(e.target.value))}
-                              className="text-center"
-                              min="0"
-                              step={product['כפולות להזמנה']}
-                            />
-                          </div>
-                          
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => adjustQuantity(product['מק"ט '], -1)}
-                            disabled={order.quantity === 0}
-                            className="h-8 w-8"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      
+<div className="flex items-center justify-between w-full max-w-[200px] mx-auto">
+  <Button
+    type="button"
+    variant="outline"
+    size="icon"
+    onClick={() => adjustQuantity(product['מק"ט '], 1)}
+    className="h-10 w-10 flex-shrink-0 bg-blue-50 hover:bg-blue-100"
+  >
+    <Plus className="h-5 w-5" />
+  </Button>
+  
+  <Input
+    type="number"
+    value={order.quantity}
+    onChange={(e) => handleQuantityChange(product['מק"ט '], Number(e.target.value))}
+    className="text-center mx-2 w-24"
+    min="0"
+    step={product['כפולות להזמנה']}
+  />
+  
+  <Button
+    type="button"
+    variant="outline"
+    size="icon"
+    onClick={() => adjustQuantity(product['מק"ט '], -1)}
+    disabled={order.quantity === 0}
+    className="h-10 w-10 flex-shrink-0 bg-blue-50 hover:bg-blue-100"
+  >
+    <Minus className="h-5 w-5" />
+  </Button>
+</div>                      
                       {order.quantity > 0 && (
                         <p className="text-base font-medium">
                           סה"כ: {(order.quantity * product['מחיר']).toFixed(2)} ₪
