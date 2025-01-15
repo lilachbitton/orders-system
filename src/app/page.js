@@ -91,37 +91,65 @@ const OrderForm = () => {
    const newQuantity = order.quantity + (adjustment * product['כפולות להזמנה']);
    handleQuantityChange(productId, newQuantity);
  };
+const submitOrder = async (orderDetails) => {
+  try {
+    const customerSearchResponse = await fetch('https://api.yeshinvoice.co.il/api/v1/getAllCustomers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': JSON.stringify({
+          "secret": "094409be-bb9c-4a51-b3b5-2d15dc2d2154",
+          "userkey": "CWKaRN8167zMA5niguEf"
+        })
+      },
+      body: JSON.stringify({
+        "PageSize": 1000,
+        "PageNumber": 1,
+        "Search": orderDetails.לקוח, // חיפוש לפי השם המדויק שנבחר
+        "PortfolioID": 0,
+        "orderby": {
+          "column": "Name",
+          "asc": "asc"
+        }
+      })
+    });
 
- const submitOrder = async (orderDetails) => {
-   try {
-     const invoiceData = {
-       Title: "",
-       Notes: `הזמנה מתאריך ${orderDetails.תאריך_הזמנה}`,
-       NotesBottom: "",
-       CurrencyID: 2,
-       LangID: 359,
-       SendSMS: false,
-       SendEmail: false,
-       DocumentType: 2,
-       vatPercentage: 18,
-       DateCreated: new Date().toISOString().split('T')[0],
-       MaxDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
-       statusID: 1,
-       isDraft: true,
+    const customerData = await customerSearchResponse.json();
+    const exactCustomer = customerData.ReturnValue.find(c => c.name === orderDetails.לקוח);
+    
+    if (!exactCustomer) {
+      throw new Error('לא נמצא לקוח בשם זה');
+    }
 
-       Customer: {
-         Name: orderDetails.לקוח,
-         NameInvoice: orderDetails.לקוח
-       },
+    const invoiceData = {
+      Title: "",
+      Notes: `הזמנה מתאריך ${orderDetails.תאריך_הזמנה}`,
+      NotesBottom: "",
+      CurrencyID: 2,
+      LangID: 359,
+      SendSMS: false,
+      SendEmail: false,
+      DocumentType: 2,
+      vatPercentage: 17,
+      DateCreated: new Date().toISOString().split('T')[0],
+      MaxDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+      statusID: 1,
+      isDraft: false,
 
-       items: orderDetails.מוצרים.map(item => ({
-         Quantity: item.כמות,
-         Price: item.מחיר_ליחידה,
-         Name: item.שם_מוצר,
-         Sku: item.מקט.toString(),
-         vatType: 4
-       }))
-     };
+      Customer: {
+        ID: exactCustomer.id,
+        Name: exactCustomer.name,
+        NameInvoice: exactCustomer.name
+      },
+
+      items: orderDetails.מוצרים.map(item => ({
+        Quantity: item.כמות,
+        Price: item.מחיר_ליחידה,
+        Name: item.שם_מוצר,
+        Sku: item.מקט.toString(),
+        vatType: 4
+      }))
+    };
 
      const response = await fetch('https://api.yeshinvoice.co.il/api/v1.1/createDocument', {
        method: 'POST',
