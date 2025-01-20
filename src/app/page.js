@@ -49,12 +49,9 @@ const OrderForm = () => {
          skipEmptyLines: true
        });
        
-const customerData = customersResult.data.map(row => ({
-  name: row['שם הלקוח'],
-  id: row['מזהה מספר']
-}));
-       setCustomers(customerData); // חסר את זה!
-
+       const customerNames = customersResult.data.map(row => row['שם הלקוח']);
+       setCustomers(customerNames);
+       
        setLoading(false);
      } catch (err) {
        console.error('Error loading data:', err);
@@ -66,13 +63,13 @@ const customerData = customersResult.data.map(row => ({
    loadData();
  }, []);
 
-const filteredCustomers = useMemo(() => {
-  if (customerSearch.length < 2) return [];
-  const searchTerm = customerSearch.toLowerCase();
-  return customers
-    .filter(c => c.name.toLowerCase().includes(searchTerm))
-    .slice(0, 5);
-}, [customerSearch, customers]);
+ const filteredCustomers = useMemo(() => {
+   if (customerSearch.length < 2) return [];
+   const searchTerm = customerSearch.toLowerCase();
+   return customers
+     .filter(c => c.toLowerCase().includes(searchTerm))
+     .slice(0, 5);
+ }, [customerSearch, customers]);
 
  const totalUnits = orders.reduce((sum, order) => sum + order.quantity, 0);
 
@@ -94,7 +91,6 @@ const filteredCustomers = useMemo(() => {
    const newQuantity = order.quantity + (adjustment * product['כפולות להזמנה']);
    handleQuantityChange(productId, newQuantity);
  };
-
 const submitOrder = async (orderDetails) => {
   try {
     const customerSearchResponse = await fetch('https://api.yeshinvoice.co.il/api/v1/getAllCustomers', {
@@ -109,7 +105,7 @@ const submitOrder = async (orderDetails) => {
       body: JSON.stringify({
         "PageSize": 1000,
         "PageNumber": 1,
-        "Search": orderDetails.לקוח.id.toString(), // עכשיו מחפש לפי ID
+        "Search": orderDetails.לקוח, // חיפוש לפי השם המדויק שנבחר
         "PortfolioID": 0,
         "orderby": {
           "column": "Name",
@@ -119,10 +115,10 @@ const submitOrder = async (orderDetails) => {
     });
 
     const customerData = await customerSearchResponse.json();
-    const exactCustomer = customerData.ReturnValue.find(c => c.id === parseInt(orderDetails.לקוח.id));
+    const exactCustomer = customerData.ReturnValue.find(c => c.name === orderDetails.לקוח);
     
     if (!exactCustomer) {
-      throw new Error('לא נמצא לקוח');
+      throw new Error('לא נמצא לקוח בשם זה');
     }
 
     const invoiceData = {
@@ -155,35 +151,35 @@ const submitOrder = async (orderDetails) => {
       }))
     };
 
-    const response = await fetch('https://api.yeshinvoice.co.il/api/v1.1/createDocument', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': JSON.stringify({
-          "secret": "094409be-bb9c-4a51-b3b5-2d15dc2d2154",
-          "userkey": "CWKaRN8167zMA5niguEf"
-        })
-      },
-      body: JSON.stringify(invoiceData)
-    });
+     const response = await fetch('https://api.yeshinvoice.co.il/api/v1.1/createDocument', {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         'Authorization': JSON.stringify({
+           "secret": "094409be-bb9c-4a51-b3b5-2d15dc2d2154",
+           "userkey": "CWKaRN8167zMA5niguEf"
+         })
+       },
+       body: JSON.stringify(invoiceData)
+     });
 
-    if (!response.ok) {
-      throw new Error('שגיאה ביצירת החשבונית');
-    }
+     if (!response.ok) {
+       throw new Error('שגיאה ביצירת החשבונית');
+     }
 
-    const responseData = await response.json();
-    console.log('תשובה מהשרת:', responseData);
+     const responseData = await response.json();
+     console.log('תשובה מהשרת:', responseData);
 
-    alert('ההזמנה נוצרה בהצלחה!');
-    setOrders(products.map(p => ({ productId: p['מק"ט '], quantity: 0 })));
-    setSelectedCustomer('');
-    setCustomerSearch('');
-    
-  } catch (error) {
-    console.error('שגיאה:', error);
-    alert(error.message || 'אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
-  }
-};
+     alert('ההזמנה נוצרה בהצלחה!');
+     setOrders(products.map(p => ({ productId: p['מק"ט '], quantity: 0 })));
+     setSelectedCustomer('');
+     setCustomerSearch('');
+     
+   } catch (error) {
+     console.error('שגיאה:', error);
+     alert('אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
+   }
+ };
 
  const handleSubmit = (e) => {
    e.preventDefault();
@@ -205,13 +201,13 @@ const submitOrder = async (orderDetails) => {
        };
      });
 
-const orderDetails = {
-  תאריך_הזמנה: new Date().toLocaleDateString('he-IL'),
-  לקוח: selectedCustomer, // עכשיו זה אובייקט עם name ו-id
-  מוצרים: orderSummary,
-  סהכ_יחידות: totalUnits,
-  סהכ_לתשלום: orderSummary.reduce((sum, item) => sum + item.סהכ, 0)
-};
+   const orderDetails = {
+     תאריך_הזמנה: new Date().toLocaleDateString('he-IL'),
+     לקוח: selectedCustomer,
+     מוצרים: orderSummary,
+     סהכ_יחידות: totalUnits,
+     סהכ_לתשלום: orderSummary.reduce((sum, item) => sum + item.סהכ, 0)
+   };
 
    submitOrder(orderDetails);
  };
@@ -253,19 +249,19 @@ const orderDetails = {
            />
            {showCustomers && filteredCustomers.length > 0 && (
              <div className="absolute z-10 w-full bg-white border rounded-md mt-1 max-h-48 overflow-y-auto">
-{filteredCustomers.map((customer) => (
-  <div
-    key={customer.id}
-    className="p-2 hover:bg-gray-100 cursor-pointer"
-    onClick={() => {
-      setSelectedCustomer(customer); // עכשיו שומר את האובייקט המלא
-      setCustomerSearch(customer.name);
-      setShowCustomers(false);
-    }}
-  >
-    {customer.name}
-  </div>
-))}
+               {filteredCustomers.map((customer) => (
+                 <div
+                   key={customer}
+                   className="p-2 hover:bg-gray-100 cursor-pointer"
+                   onClick={() => {
+                     setSelectedCustomer(customer);
+                     setCustomerSearch(customer);
+                     setShowCustomers(false);
+                   }}
+                 >
+                   {customer}
+                 </div>
+               ))}
              </div>
            )}
          </div>
