@@ -91,6 +91,45 @@ const OrderForm = () => {
    const newQuantity = order.quantity + (adjustment * product['כפולות להזמנה']);
    handleQuantityChange(productId, newQuantity);
  };
+const findBestMatch = (searchName, customers) => {
+  // פונקציה משופרת לנירמול שמות
+  const normalize = (str) => {
+    return str
+      .replace(/\s+/g, ' ')          // מחליף רווחים מרובים ברווח אחד
+      .trim()                        // מסיר רווחים מהקצוות
+      .replace(/["״''\.]/g, '')      // מסיר גרשיים ונקודות
+      .replace(/בעמ|בע"מ|בע״מ/g, '') // מסיר וריאציות של בע"מ
+      .replace(/[,]/g, '')           // מסיר פסיקים
+      .toLowerCase();                // הופך לאותיות קטנות
+  };
+  
+  const normalizedSearch = normalize(searchName);
+  
+  // חיפוש התאמה מדויקת
+  const exactMatch = customers.find(c => normalize(c.name) === normalizedSearch);
+  if (exactMatch) return exactMatch;
+  
+  // חיפוש התאמה חלקית - בודק אם המחרוזות מכילות אחת את השנייה
+  const partialMatch = customers.find(c => {
+    const normalizedCustomer = normalize(c.name);
+    return normalizedCustomer.includes(normalizedSearch) || 
+           normalizedSearch.includes(normalizedCustomer);
+  });
+  if (partialMatch) return partialMatch;
+  
+  // חיפוש לפי מילים - מפרק את השם למילים ובודק התאמה חלקית
+  const searchWords = normalizedSearch.split(' ').filter(word => word.length > 1);
+  return customers.find(c => {
+    const normalizedCustomer = normalize(c.name);
+    const customerWords = normalizedCustomer.split(' ');
+    return searchWords.some(word => 
+      customerWords.some(customerWord => 
+        customerWord.includes(word) || word.includes(customerWord)
+      )
+    );
+  });
+};
+
 const submitOrder = async (orderDetails) => {
   try {
     // נרמול השם לחיפוש - הסרת רווחים מיותרים וניקוי תווים מיוחדים
@@ -118,42 +157,17 @@ const submitOrder = async (orderDetails) => {
     });
 
     const customerData = await customerSearchResponse.json();
-    
-    // פונקציה להשוואת מחרוזות עם סבילות לשינויים קטנים
-    const findBestMatch = (searchName, customers) => {
-      // הסרת רווחים כפולים ונירמול
-      const normalize = (str) => {
-        return str.replace(/\s+/g, ' ')
-                 .trim()
-                 .replace(/["״'']/g, '') // הסרת גרשיים שונים
-                 .replace(/בעמ|בע"מ|בע״מ/g, ''); // נירמול צורות שונות של בע"מ
-      };
-      
-      const normalizedSearch = normalize(searchName);
-      
-      // חיפוש התאמה מדויקת קודם
-      const exactMatch = customers.find(c => normalize(c.name) === normalizedSearch);
-      if (exactMatch) return exactMatch;
-      
-      // חיפוש התאמה חלקית
-      const partialMatch = customers.find(c => {
-        const normalizedCustomer = normalize(c.name);
-        return normalizedCustomer.includes(normalizedSearch) || 
-               normalizedSearch.includes(normalizedCustomer);
-      });
-      
-      return partialMatch;
-    };
-
     const matchedCustomer = findBestMatch(normalizedCustomerName, customerData.ReturnValue);
     
     if (!matchedCustomer) {
-      throw new Error('לא נמצא לקוח מתאים');
+      throw new Error(\`לא נמצא לקוח מתאים לשם: "\${normalizedCustomerName}". אנא בדוק את השם ונסה שנית.\`);
     }
+
+    console.log('נמצא לקוח:', matchedCustomer); // לוג שימושי לדיבוג
 
     const invoiceData = {
       Title: "",
-      Notes: `הזמנה מתאריך ${orderDetails.תאריך_הזמנה}`,
+      Notes: \`הזמנה מתאריך \${orderDetails.תאריך_הזמנה}\`,
       NotesBottom: "",
       CurrencyID: 2,
       LangID: 359,
@@ -210,7 +224,6 @@ const submitOrder = async (orderDetails) => {
     alert(error.message || 'אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
   }
 };
-
  const handleSubmit = (e) => {
    e.preventDefault();
    if (totalUnits < 60) {
