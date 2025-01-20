@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Camera, Plus, Minus } from "lucide-react";
+import { Plus, Minus } from "lucide-react";
 import Papa from 'papaparse';
 
 const OrderForm = () => {
@@ -30,12 +30,17 @@ const OrderForm = () => {
           dynamicTyping: true
         });
         
-        const validProducts = productsResult.data.filter(product => 
-          product['שם מוצר'] && product['מק"ט '] && product['כפולות להזמנה']
-        ).map(product => ({
-          ...product,
-          'תמונה': `/images/${product['שם מוצר'].toLowerCase().replace(/ /g, '-')}.jpg`
-        }));
+        const validProducts = productsResult.data
+          .filter(product => 
+            product && 
+            product['שם מוצר'] && 
+            product['מק"ט '] && 
+            product['כפולות להזמנה']
+          )
+          .map(product => ({
+            ...product,
+            'תמונה': `/images/${product['שם מוצר'].toString().toLowerCase().replace(/ /g, '-')}.jpg`
+          }));
         
         setProducts(validProducts);
         setOrders(validProducts.map(p => ({ 
@@ -51,10 +56,12 @@ const OrderForm = () => {
           dynamicTyping: true
         });
         
-        const customersData = customersResult.data.map(row => ({
-          name: row['שם הלקוח'],
-          id: row['מזהה מספר']
-        }));
+        const customersData = customersResult.data
+          .filter(row => row && row['שם הלקוח'] && row['מזהה מספר'])
+          .map(row => ({
+            name: row['שם הלקוח'].toString(),
+            id: parseInt(row['מזהה מספר'])
+          }));
         setCustomers(customersData);
         
         setLoading(false);
@@ -69,10 +76,13 @@ const OrderForm = () => {
   }, []);
 
   const filteredCustomers = useMemo(() => {
-    if (customerSearch.length < 2) return [];
+    if (!customerSearch || customerSearch.length < 2) return [];
     const searchTerm = customerSearch.toLowerCase();
     return customers
-      .filter(c => c.name.toLowerCase().includes(searchTerm))
+      .filter(c => {
+        if (!c || !c.name) return false;
+        return c.name.toString().toLowerCase().includes(searchTerm);
+      })
       .slice(0, 5);
   }, [customerSearch, customers]);
 
@@ -80,6 +90,8 @@ const OrderForm = () => {
 
   const handleQuantityChange = (productId, newValue) => {
     const product = products.find(p => p['מק"ט '] === productId);
+    if (!product) return;
+    
     const multiple = product['כפולות להזמנה'];
     const quantity = Math.floor(newValue / multiple) * multiple;
     
@@ -92,12 +104,19 @@ const OrderForm = () => {
 
   const adjustQuantity = (productId, adjustment) => {
     const product = products.find(p => p['מק"ט '] === productId);
+    if (!product) return;
+    
     const order = orders.find(o => o.productId === productId) || { quantity: 0 };
     const newQuantity = order.quantity + (adjustment * product['כפולות להזמנה']);
     handleQuantityChange(productId, newQuantity);
   };
 
   const submitOrder = async (orderDetails) => {
+    if (!orderDetails.customerId) {
+      alert('נא לבחור לקוח');
+      return;
+    }
+
     try {
       const customerSearchResponse = await fetch('https://api.yeshinvoice.co.il/api/v1/getAllCustomers', {
         method: 'POST',
@@ -111,7 +130,7 @@ const OrderForm = () => {
         body: JSON.stringify({
           "PageSize": 1000,
           "PageNumber": 1,
-          "Search": orderDetails.customerId.toString(), // חיפוש לפי ID
+          "Search": orderDetails.customerId.toString(),
           "PortfolioID": 0,
           "orderby": {
             "column": "Name",
@@ -120,9 +139,15 @@ const OrderForm = () => {
         })
       });
 
-      const customerData = await customerSearchResponse.json();
+      if (!customerSearchResponse.ok) {
+        throw new Error('שגיאה בחיפוש לקוח');
+      }
+const customerData = await customerSearchResponse.json();
+      if (!customerData.Success) {
+        throw new Error(customerData.ErrorMessage || 'שגיאה בחיפוש לקוח');
+      }
+
       const exactCustomer = customerData.ReturnValue.find(c => c.id === orderDetails.customerId);
-      
       if (!exactCustomer) {
         throw new Error('לא נמצא לקוח עם מזהה זה');
       }
@@ -174,9 +199,14 @@ const OrderForm = () => {
       }
 
       const responseData = await response.json();
-      console.log('תשובה מהשרת:', responseData);
+      if (!responseData.Success) {
+        throw new Error(responseData.ErrorMessage || 'שגיאה ביצירת החשבונית');
+      }
 
+      console.log('תשובה מהשרת:', responseData);
       alert('ההזמנה נוצרה בהצלחה!');
+      
+      // איפוס הטופס
       setOrders(products.map(p => ({ productId: p['מק"ט '], quantity: 0 })));
       setSelectedCustomer('');
       setSelectedCustomerId(null);
@@ -184,12 +214,18 @@ const OrderForm = () => {
       
     } catch (error) {
       console.error('שגיאה:', error);
-      alert('אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
+      alert(error.message || 'אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    if (!selectedCustomer || !selectedCustomerId) {
+      alert('נא לבחור לקוח');
+      return;
+    }
+    
     if (totalUnits < 60) {
       alert("נדרש מינימום של 60 יחידות להזמנה");
       return;
@@ -331,7 +367,7 @@ const OrderForm = () => {
                             className="text-center mx-2 w-24"
                             min="0"
                             step={product['כפולות להזמנה']}
-/>
+                          />
                           
                           <Button
                             type="button"
