@@ -197,6 +197,7 @@ const OrderForm = () => {
     alert('אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
   }
 };
+
     const invoiceData = {
       Title: "",
       Notes: `הזמנה מתאריך ${orderDetails.תאריך_הזמנה}`,
