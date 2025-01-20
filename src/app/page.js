@@ -93,12 +93,6 @@ const OrderForm = () => {
  };
 const submitOrder = async (orderDetails) => {
   try {
-    // נקה את שם הלקוח מתווים מיוחדים שעלולים לגרום לבעיות
-    const cleanCustomerName = orderDetails.לקוח
-      .replace(/["']/g, '') // מסיר גרשיים
-      .replace(/\s+/g, ' ') // מנרמל רווחים
-      .trim();
-
     const customerSearchResponse = await fetch('https://api.yeshinvoice.co.il/api/v1/getAllCustomers', {
       method: 'POST',
       headers: {
@@ -111,7 +105,7 @@ const submitOrder = async (orderDetails) => {
       body: JSON.stringify({
         "PageSize": 1000,
         "PageNumber": 1,
-        "Search": cleanCustomerName,
+        "Search": orderDetails.לקוח, // חיפוש לפי השם המדויק שנבחר
         "PortfolioID": 0,
         "orderby": {
           "column": "Name",
@@ -121,19 +115,7 @@ const submitOrder = async (orderDetails) => {
     });
 
     const customerData = await customerSearchResponse.json();
-    
-    // פונקציה להשוואת שמות לקוחות תוך התעלמות מתווים מיוחדים
-    const normalizeCustomerName = (name) => {
-      return name
-        .replace(/["']/g, '')
-        .replace(/\s+/g, ' ')
-        .toLowerCase()
-        .trim();
-    };
-
-    // מחפש התאמה גם אם יש הבדלים קטנים בפורמט
-    const exactCustomer = customerData.ReturnValue.find(c => 
-      normalizeCustomerName(c.name) === normalizeCustomerName(orderDetails.לקוח));
+    const exactCustomer = customerData.ReturnValue.find(c => c.name === orderDetails.לקוח);
     
     if (!exactCustomer) {
       throw new Error('לא נמצא לקוח בשם זה');
@@ -169,35 +151,36 @@ const submitOrder = async (orderDetails) => {
       }))
     };
 
-    const response = await fetch('https://api.yeshinvoice.co.il/api/v1.1/createDocument', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': JSON.stringify({
-          "secret": "094409be-bb9c-4a51-b3b5-2d15dc2d2154",
-          "userkey": "CWKaRN8167zMA5niguEf"
-        })
-      },
-      body: JSON.stringify(invoiceData)
-    });
+     const response = await fetch('https://api.yeshinvoice.co.il/api/v1.1/createDocument', {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         'Authorization': JSON.stringify({
+           "secret": "094409be-bb9c-4a51-b3b5-2d15dc2d2154",
+           "userkey": "CWKaRN8167zMA5niguEf"
+         })
+       },
+       body: JSON.stringify(invoiceData)
+     });
 
-    if (!response.ok) {
-      throw new Error('שגיאה ביצירת החשבונית');
-    }
+     if (!response.ok) {
+       throw new Error('שגיאה ביצירת החשבונית');
+     }
 
-    const responseData = await response.json();
-    console.log('תשובה מהשרת:', responseData);
+     const responseData = await response.json();
+     console.log('תשובה מהשרת:', responseData);
 
-    alert('ההזמנה נוצרה בהצלחה!');
-    setOrders(products.map(p => ({ productId: p['מק"ט '], quantity: 0 })));
-    setSelectedCustomer('');
-    setCustomerSearch('');
-    
-  } catch (error) {
-    console.error('שגיאה:', error);
-    alert('אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
-  }
-};
+     alert('ההזמנה נוצרה בהצלחה!');
+     setOrders(products.map(p => ({ productId: p['מק"ט '], quantity: 0 })));
+     setSelectedCustomer('');
+     setCustomerSearch('');
+     
+   } catch (error) {
+     console.error('שגיאה:', error);
+     alert('אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
+   }
+ };
+
  const handleSubmit = (e) => {
    e.preventDefault();
    if (totalUnits < 60) {
