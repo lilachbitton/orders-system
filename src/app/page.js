@@ -115,8 +115,7 @@ const submitOrder = async (orderDetails) => {
     });
 
     const customerData = await customerSearchResponse.json();
-    const exactCustomer = customerData.ReturnValue.find(c => c.name === orderDetails.לקוח);
-    
+    const exactCustomer = customerData.ReturnValue.find(c => c.name.includes(orderDetails.לקוח));    
     if (!exactCustomer) {
       throw new Error('לא נמצא לקוח בשם זה');
     }
