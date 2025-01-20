@@ -90,9 +90,14 @@ const OrderForm = () => {
    const order = orders.find(o => o.productId === productId) || { quantity: 0 };
    const newQuantity = order.quantity + (adjustment * product['כפולות להזמנה']);
    handleQuantityChange(productId, newQuantity);
- };
-const submitOrder = async (orderDetails) => {
+ }const submitOrder = async (orderDetails) => {
   try {
+    // נקה את שם הלקוח מתווים מיוחדים שעלולים לגרום לבעיות
+    const cleanCustomerName = orderDetails.לקוח
+      .replace(/["']/g, '') // מסיר גרשיים
+      .replace(/\s+/g, ' ') // מנרמל רווחים
+      .trim();
+
     const customerSearchResponse = await fetch('https://api.yeshinvoice.co.il/api/v1/getAllCustomers', {
       method: 'POST',
       headers: {
@@ -105,7 +110,7 @@ const submitOrder = async (orderDetails) => {
       body: JSON.stringify({
         "PageSize": 1000,
         "PageNumber": 1,
-        "Search": orderDetails.לקוח, // חיפוש לפי השם המדויק שנבחר
+        "Search": cleanCustomerName,
         "PortfolioID": 0,
         "orderby": {
           "column": "Name",
@@ -115,12 +120,83 @@ const submitOrder = async (orderDetails) => {
     });
 
     const customerData = await customerSearchResponse.json();
-    const exactCustomer = customerData.ReturnValue.find(c => c.name === orderDetails.לקוח);
+    
+    // פונקציה להשוואת שמות לקוחות תוך התעלמות מתווים מיוחדים
+    const normalizeCustomerName = (name) => {
+      return name
+        .replace(/["']/g, '')
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .trim();
+    };
+
+    // מחפש התאמה גם אם יש הבדלים קטנים בפורמט
+    const exactCustomer = customerData.ReturnValue.find(c => 
+      normalizeCustomerName(c.name) === normalizeCustomerName(orderDetails.לקוח));
     
     if (!exactCustomer) {
       throw new Error('לא נמצא לקוח בשם זה');
     }
 
+    const invoiceData = {
+      Title: "",
+      Notes: `הזמנה מתאריך ${orderDetails.תאריך_הזמנה}`,
+      NotesBottom: "",
+      CurrencyID: 2,
+      LangID: 359,
+      SendSMS: false,
+      SendEmail: false,
+      DocumentType: 2,
+      vatPercentage: 17,
+      DateCreated: new Date().toISOString().split('T')[0],
+      MaxDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+      statusID: 1,
+      isDraft: true,
+
+      Customer: {
+        ID: exactCustomer.id,
+        Name: exactCustomer.name,
+        NameInvoice: exactCustomer.name
+      },
+
+      items: orderDetails.מוצרים.map(item => ({
+        Quantity: item.כמות,
+        Price: item.מחיר_ליחידה,
+        Name: item.שם_מוצר,
+        Sku: item.מקט.toString(),
+        vatType: 4
+      }))
+    };
+
+    const response = await fetch('https://api.yeshinvoice.co.il/api/v1.1/createDocument', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': JSON.stringify({
+          "secret": "094409be-bb9c-4a51-b3b5-2d15dc2d2154",
+          "userkey": "CWKaRN8167zMA5niguEf"
+        })
+      },
+      body: JSON.stringify(invoiceData)
+    });
+
+    if (!response.ok) {
+      throw new Error('שגיאה ביצירת החשבונית');
+    }
+
+    const responseData = await response.json();
+    console.log('תשובה מהשרת:', responseData);
+
+    alert('ההזמנה נוצרה בהצלחה!');
+    setOrders(products.map(p => ({ productId: p['מק"ט '], quantity: 0 })));
+    setSelectedCustomer('');
+    setCustomerSearch('');
+    
+  } catch (error) {
+    console.error('שגיאה:', error);
+    alert('אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
+  }
+};
     const invoiceData = {
       Title: "",
       Notes: `הזמנה מתאריך ${orderDetails.תאריך_הזמנה}`,
