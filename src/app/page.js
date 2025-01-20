@@ -348,28 +348,28 @@ const OrderForm = () => {
                 סה"כ לתשלום: ₪
                 {orders.reduce((sum, order) => {
                   const product = products.find(p => p['מק"ט '] === order.productId);
-                  return sum + (order.quantity * product['מחיר']);
-              , 0).toFixed(2)}
-                </p>
-            )}
-            {totalUnits < 60 && (
-              <p className="text-red-500">
-                נדרש מינימום של 60 יחידות להזמנה
-              </p>
-            )}
-          </div>
+                          return sum + (order.quantity * product['מחיר']);
+               }, 0).toFixed(2)}
+             </p>
+           )}
+           {totalUnits < 60 && (
+             <p className="text-red-500">
+               נדרש מינימום של 60 יחידות להזמנה
+             </p>
+           )}
+         </div>
 
-          <Button 
-            onClick={handleSubmit}
-            className="w-full"
-            disabled={totalUnits < 60 || !selectedCustomer}
-          >
-            שלח הזמנה
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
+         <Button 
+           onClick={handleSubmit}
+           className="w-full"
+           disabled={totalUnits < 60 || !selectedCustomer}
+         >
+           שלח הזמנה
+         </Button>
+       </CardContent>
+     </Card>
+   </div>
+ );
 };
 
 export default OrderForm;
