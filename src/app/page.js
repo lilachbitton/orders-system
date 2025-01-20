@@ -11,7 +11,7 @@ import Papa from 'papaparse';
 const OrderForm = () => {
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,15 +46,10 @@ const OrderForm = () => {
         const customersText = await customersResponse.text();
         const customersResult = Papa.parse(customersText, {
           header: true,
-          skipEmptyLines: true,
-          dynamicTyping: true
+          skipEmptyLines: true
         });
         
-        const validCustomers = customersResult.data.map(row => ({
-          id: row['מזהה מספר'],
-          name: row['שם הלקוח']
-        }));
-        setCustomers(validCustomers);
+        setCustomers(customersResult.data);
         
         setLoading(false);
       } catch (err) {
@@ -71,33 +66,15 @@ const OrderForm = () => {
     if (customerSearch.length < 2) return [];
     const searchTerm = customerSearch.toLowerCase();
     return customers
-      .filter(c => c.name.toLowerCase().includes(searchTerm))
+      .filter(c => c['שם הלקוח'].toLowerCase().includes(searchTerm))
       .slice(0, 5);
   }, [customerSearch, customers]);
 
-  const totalUnits = orders.reduce((sum, order) => sum + order.quantity, 0);
-
-  const handleQuantityChange = (productId, newValue) => {
-    const product = products.find(p => p['מק"ט '] === productId);
-    const multiple = product['כפולות להזמנה'];
-    const quantity = Math.floor(newValue / multiple) * multiple;
-    
-    setOrders(orders.map(order => 
-      order.productId === productId 
-        ? { ...order, quantity: quantity >= 0 ? quantity : 0 }
-        : order
-    ));
-  };
-
-  const adjustQuantity = (productId, adjustment) => {
-    const product = products.find(p => p['מק"ט '] === productId);
-    const order = orders.find(o => o.productId === productId) || { quantity: 0 };
-    const newQuantity = order.quantity + (adjustment * product['כפולות להזמנה']);
-    handleQuantityChange(productId, newQuantity);
-  };
-
   const submitOrder = async (orderDetails) => {
     try {
+      // מצא את ה-ID של הלקוח מהטבלה שלנו
+      const customerData = customers.find(c => c['שם הלקוח'] === orderDetails.לקוח);
+      
       const invoiceData = {
         Title: "",
         Notes: `הזמנה מתאריך ${orderDetails.תאריך_הזמנה}`,
@@ -114,9 +91,9 @@ const OrderForm = () => {
         isDraft: true,
 
         Customer: {
-          ID: selectedCustomer.id,
-          Name: selectedCustomer.name,
-          NameInvoice: selectedCustomer.name
+          ID: customerData['מזהה מספר'],
+          Name: customerData['שם הלקוח'],
+          NameInvoice: customerData['שם הלקוח']
         },
 
         items: orderDetails.מוצרים.map(item => ({
@@ -149,13 +126,35 @@ const OrderForm = () => {
 
       alert('ההזמנה נוצרה בהצלחה!');
       setOrders(products.map(p => ({ productId: p['מק"ט '], quantity: 0 })));
-      setSelectedCustomer(null);
+      setSelectedCustomer('');
       setCustomerSearch('');
       
     } catch (error) {
       console.error('שגיאה:', error);
       alert('אירעה שגיאה בשליחת ההזמנה. אנא נסה שנית.');
     }
+  };
+
+  // שאר הקוד נשאר בדיוק אותו דבר
+  const totalUnits = orders.reduce((sum, order) => sum + order.quantity, 0);
+
+  const handleQuantityChange = (productId, newValue) => {
+    const product = products.find(p => p['מק"ט '] === productId);
+    const multiple = product['כפולות להזמנה'];
+    const quantity = Math.floor(newValue / multiple) * multiple;
+    
+    setOrders(orders.map(order => 
+      order.productId === productId 
+        ? { ...order, quantity: quantity >= 0 ? quantity : 0 }
+        : order
+    ));
+  };
+
+  const adjustQuantity = (productId, adjustment) => {
+    const product = products.find(p => p['מק"ט '] === productId);
+    const order = orders.find(o => o.productId === productId) || { quantity: 0 };
+    const newQuantity = order.quantity + (adjustment * product['כפולות להזמנה']);
+    handleQuantityChange(productId, newQuantity);
   };
 
   const handleSubmit = (e) => {
@@ -180,7 +179,7 @@ const OrderForm = () => {
 
     const orderDetails = {
       תאריך_הזמנה: new Date().toLocaleDateString('he-IL'),
-      לקוח: selectedCustomer.name,
+      לקוח: selectedCustomer,
       מוצרים: orderSummary,
       סהכ_יחידות: totalUnits,
       סהכ_לתשלום: orderSummary.reduce((sum, item) => sum + item.סהכ, 0)
@@ -228,15 +227,15 @@ const OrderForm = () => {
               <div className="absolute z-10 w-full bg-white border rounded-md mt-1 max-h-48 overflow-y-auto">
                 {filteredCustomers.map((customer) => (
                   <div
-                    key={customer.id}
+                    key={customer['מזהה מספר']}
                     className="p-2 hover:bg-gray-100 cursor-pointer"
                     onClick={() => {
-                      setSelectedCustomer(customer);
-                      setCustomerSearch(customer.name);
+                      setSelectedCustomer(customer['שם הלקוח']);
+                      setCustomerSearch(customer['שם הלקוח']);
                       setShowCustomers(false);
                     }}
                   >
-                    {customer.name}
+                    {customer['שם הלקוח']}
                   </div>
                 ))}
               </div>
@@ -263,7 +262,40 @@ const OrderForm = () => {
                       />
                     </div>
                     
-                    <div className="text-center space-y-3">
+                    <div className="text-center space-y-4 mb-6">
+            <p className="text-xl font-bold">
+              סה"כ יחידות: {totalUnits}
+            </p>
+            {orders.some(o => o.quantity > 0) && (
+              <p className="text-xl font-bold">
+                סה"כ לתשלום: ₪
+                {orders.reduce((sum, order) => {
+                  const product = products.find(p => p['מק"ט '] === order.productId);
+                  return sum + (order.quantity * product['מחיר']);
+                }, 0).toFixed(2)}
+              </p>
+            )}
+            {totalUnits < 60 && (
+              <p className="text-red-500">
+                נדרש מינימום של 60 יחידות להזמנה
+              </p>
+            )}
+          </div>
+
+          <Button 
+            onClick={handleSubmit}
+            className="w-full"
+            disabled={totalUnits < 60 || !selectedCustomer}
+          >
+            שלח הזמנה
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default OrderForm;-3">
                       <h3 className="text-lg font-bold">
                         {product['שם מוצר']}
                       </h3>
@@ -326,7 +358,7 @@ const OrderForm = () => {
             })}
           </div>
 
-          <div className="text-center space-y-4 mb-6">
+<div className="text-center space-y-4 mb-6">
             <p className="text-xl font-bold">
               סה"כ יחידות: {totalUnits}
             </p>
