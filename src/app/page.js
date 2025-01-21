@@ -146,7 +146,7 @@ const submitOrder = async (orderDetails) => {
         Price: item.מחיר_ליחידה,
         Name: item.שם_מוצר,
         Sku: item.מקט.toString(),
-        vatType: 4
+        vatType: 1
       }))
     };
 
