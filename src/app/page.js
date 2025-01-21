@@ -133,7 +133,7 @@ const submitOrder = async (orderDetails) => {
       DateCreated: new Date().toISOString().split('T')[0],
       MaxDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
       statusID: 1,
-      isDraft: true,
+      isDraft: falseש,
 
       Customer: {
         ID: exactCustomer.id,
