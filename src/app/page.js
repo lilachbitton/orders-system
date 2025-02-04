@@ -354,7 +354,7 @@ const submitOrder = async (orderDetails) => {
            </p>
            {orders.some(o => o.quantity > 0) && (
              <p className="text-xl font-bold">
-               סה"כ לתשלום: ₪
+               סה"כ לתשלום (לא כולל מע"מ) : ₪
                {orders.reduce((sum, order) => {
                  const product = products.find(p => p['מק"ט '] === order.productId);
                  return sum + (order.quantity * product['מחיר']);
