@@ -229,7 +229,7 @@ const submitOrder = async (orderDetails) => {
 
  return (
    <div className="max-w-4xl mx-auto p-4" dir="rtl">
-     <Card className="bg-white shadow-sm">
+     <Card className="bg-[#ecece3] shadow-sm">
        <CardContent className="p-6">
          <h1 className="text-2xl font-bold mb-6 text-center">טופס הזמנות</h1>
          
@@ -247,7 +247,7 @@ const submitOrder = async (orderDetails) => {
              className="w-full"
            />
            {showCustomers && filteredCustomers.length > 0 && (
-             <div className="absolute z-10 w-full bg-white border rounded-md mt-1 max-h-48 overflow-y-auto">
+             <div className="absolute z-10 w-full bg-[#ecece3] border rounded-md mt-1 max-h-48 overflow-y-auto">
                {filteredCustomers.map((customer) => (
                  <div
                    key={customer}
@@ -269,7 +269,7 @@ const submitOrder = async (orderDetails) => {
            {products.map((product) => {
              const order = orders.find(o => o.productId === product['מק"ט ']) || { quantity: 0 };
              return (
-               <Card key={product['מק"ט ']} className="bg-white shadow-sm">
+               <Card key={product['מק"ט ']} className="bg-[#ecece3] shadow-sm">
                  <CardContent className="p-4">
                    <div className="w-32 h-32 mx-auto bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
                      <img
