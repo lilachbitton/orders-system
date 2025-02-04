@@ -247,7 +247,7 @@ const submitOrder = async (orderDetails) => {
              className="w-full"
            />
            {showCustomers && filteredCustomers.length > 0 && (
-             <div className="absolute z-10 w-full bg-[#ecece3] border rounded-md mt-1 max-h-48 overflow-y-auto">
+             <div className="absolute z-10 w-full bg-white border rounded-md mt-1 max-h-48 overflow-y-auto">
                {filteredCustomers.map((customer) => (
                  <div
                    key={customer}
