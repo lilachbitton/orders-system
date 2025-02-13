@@ -1,22 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Camera, Plus, Minus } from "lucide-react";
 import Papa from 'papaparse';
+import CustomerSearch from '@/components/ui/customer-search';
 
 const OrderForm = () => {
  const [products, setProducts] = useState([]);
- const [customers, setCustomers] = useState([]);
  const [selectedCustomer, setSelectedCustomer] = useState("");
  const [customerSearch, setCustomerSearch] = useState("");
  const [orders, setOrders] = useState([]);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState(null);
- const [showCustomers, setShowCustomers] = useState(false);
 
  useEffect(() => {
    const loadData = async () => {
@@ -41,16 +40,6 @@ const OrderForm = () => {
          productId: p['מק"ט '],
          quantity: 0
        })));
-
-       const customersResponse = await fetch('/data/customers.csv');
-       const customersText = await customersResponse.text();
-       const customersResult = Papa.parse(customersText, {
-         header: true,
-         skipEmptyLines: true
-       });
-       
-       const customerNames = customersResult.data.map(row => row['שם הלקוח']);
-       setCustomers(customerNames);
        
        setLoading(false);
      } catch (err) {
@@ -62,14 +51,6 @@ const OrderForm = () => {
 
    loadData();
  }, []);
-
- const filteredCustomers = useMemo(() => {
-   if (customerSearch.length < 2) return [];
-   const searchTerm = customerSearch.toLowerCase();
-   return customers
-     .filter(c => c.toLowerCase().includes(searchTerm))
-     .slice(0, 5);
- }, [customerSearch, customers]);
 
  const totalUnits = orders.reduce((sum, order) => sum + order.quantity, 0);
 
@@ -91,6 +72,7 @@ const OrderForm = () => {
    const newQuantity = order.quantity + (adjustment * product['כפולות להזמנה']);
    handleQuantityChange(productId, newQuantity);
  };
+
 const submitOrder = async (orderDetails) => {
   try {
     const customerSearchResponse = await fetch('https://api.yeshinvoice.co.il/api/v1/getAllCustomers', {
@@ -105,7 +87,7 @@ const submitOrder = async (orderDetails) => {
       body: JSON.stringify({
         "PageSize": 1000,
         "PageNumber": 1,
-        "Search": orderDetails.לקוח, // חיפוש לפי השם המדויק שנבחר
+        "Search": orderDetails.לקוח,
         "PortfolioID": 0,
         "orderby": {
           "column": "Name",
@@ -234,35 +216,12 @@ const submitOrder = async (orderDetails) => {
          <h1 className="text-2xl font-bold mb-6 text-center">טופס הזמנות</h1>
          
          <div className="relative mb-8">
-           <Label className="block mb-2">בחר לקוח</Label>
-           <Input
-             type="text"
-             value={customerSearch}
-             onChange={(e) => {
-               setCustomerSearch(e.target.value);
-               setShowCustomers(true);
-             }}
-             onClick={() => setShowCustomers(true)}
-             placeholder="הקלד לחיפוש לקוח..."
-             className="w-full"
+           <CustomerSearch 
+             onCustomerSelect={(customer) => {
+               setSelectedCustomer(customer.name);
+               setCustomerSearch(customer.name);
+             }} 
            />
-           {showCustomers && filteredCustomers.length > 0 && (
-             <div className="absolute z-10 w-full bg-white border rounded-md mt-1 max-h-48 overflow-y-auto">
-               {filteredCustomers.map((customer) => (
-                 <div
-                   key={customer}
-                   className="p-2 hover:bg-gray-100 cursor-pointer"
-                   onClick={() => {
-                     setSelectedCustomer(customer);
-                     setCustomerSearch(customer);
-                     setShowCustomers(false);
-                   }}
-                 >
-                   {customer}
-                 </div>
-               ))}
-             </div>
-           )}
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
